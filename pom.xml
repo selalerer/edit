@@ -6,10 +6,32 @@
     <packaging>jar</packaging>
     <version>1.0.0</version>
     <name>edit</name>
-    <url>http://maven.apache.org</url>
+    <url>https://github.com/selalerer/edit</url>
+    <description>Editing tools for buffers and strings.</description>
+
+    <developers>
+        <developer>
+            <name>Sela Lerer</name>
+            <email>lerersela@gmail.com</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/selalerer/edit.git</connection>
+        <developerConnection>scm:git:ssh://github.com/selalerer/edit.git</developerConnection>
+        <url>https://github.com/selalerer/edit</url>
+    </scm>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
 
     <properties>
-        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
     </properties>
 
