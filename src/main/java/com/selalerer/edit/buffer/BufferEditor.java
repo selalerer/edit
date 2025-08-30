@@ -31,13 +31,12 @@ public class BufferEditor implements Editor<byte[]> {
 
         var output = new ByteArrayOutputStream(in.length);
 
-        var session = createEditorSession(output);
+        try (var session = createEditorSession(output);) {
 
-        for (var b : in) {
-            session.addByte(b);
+            for (var b : in) {
+                session.addByte(b);
+            }
         }
-
-        session.flush();
 
         return output.toByteArray();
     }
@@ -46,7 +45,7 @@ public class BufferEditor implements Editor<byte[]> {
         return new EditorSession(o);
     }
 
-    public class EditorSession {
+    public class EditorSession implements AutoCloseable {
 
         private final OutputStream o;
         private int location = 0;
@@ -105,11 +104,12 @@ public class BufferEditor implements Editor<byte[]> {
         }
 
         @SneakyThrows
-        public void flush() {
+        public void close() {
             if  (validBytes > 0) {
                 o.write(buffer, 0, validBytes);
                 validBytes = 0;
             }
+            o.close();
         }
     }
 }
