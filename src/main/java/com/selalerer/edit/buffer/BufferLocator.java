@@ -1,6 +1,7 @@
 package com.selalerer.edit.buffer;
 
 import com.selalerer.edit.DatumLocator;
+import lombok.Getter;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
@@ -12,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class BufferLocator implements DatumLocator<byte[], Integer, byte[], byte[]> {
 
     private final ConcurrentHashMap<ByteBuffer, Integer> matchers = new ConcurrentHashMap<>();
+    @Getter
     private int longestWord = 0;
 
     public void addMatcher(byte[] matcher) {
@@ -26,22 +28,39 @@ public class BufferLocator implements DatumLocator<byte[], Integer, byte[], byte
 
     @Override
     public Optional<Result<Integer, byte[], byte[]>> findNext(byte[] in, Integer fromLocation) {
-        var words = new ArrayList<ByteArrayOutputStream>();
+
+        var session = new LocatorSession(fromLocation);
 
         for (int curLocation = fromLocation; curLocation < in.length; ++curLocation) {
 
-            addByteToWords(words, in[curLocation]);
-            removeWordsThatAreTooLong(words);
-
-            var matchingWord = getMatchingWord(words);
-            if (matchingWord.isPresent()) {
-                var location = curLocation - matchingWord.get().length + 1;
-                return matchingWord
-                        .map(w -> new Result<>(location, w, w));
+            var result = session.addByte(in[curLocation]);
+            if (result.isPresent()) {
+                return result;
             }
         }
 
         return Optional.empty();
+    }
+
+    public LocatorSession startLocatorSession(int fromLocation) {
+        return new LocatorSession(fromLocation);
+    }
+
+    public class LocatorSession {
+        private final List<ByteArrayOutputStream> words = new ArrayList<>();
+        private int location;
+
+        public LocatorSession(int startLocation) {
+            location = startLocation;
+        }
+
+        public Optional<Result<Integer, byte[], byte[]>> addByte(byte b) {
+            ++location;
+            addByteToWords(words, b);
+            removeWordsThatAreTooLong(words);
+            return getMatchingWord(words)
+                    .map(w -> new Result<>(location - w.length, w, w));
+        }
     }
 
     private void addByteToWords(List<ByteArrayOutputStream> words, byte b) {

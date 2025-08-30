@@ -133,8 +133,8 @@ public class BufferLocatorTest {
     private void assertResult(DatumLocator.Result<Integer, byte[], byte[]> expected,
                               DatumLocator.Result<Integer, byte[], byte[]> actual) {
 
-        assertEquals(expected.location(), actual.location());
-        assertArrayEquals(expected.matcher(), actual.matcher());
-        assertArrayEquals(expected.datum(), actual.datum());
+        assertEquals(expected.location(), actual.location(), "" + actual);
+        assertArrayEquals(expected.matcher(), actual.matcher(), "" + actual);
+        assertArrayEquals(expected.datum(), actual.datum(), "" + actual);
     }
 }
