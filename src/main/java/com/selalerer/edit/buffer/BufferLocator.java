@@ -10,12 +10,19 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+/***
+ * Locates sequences of bytes in an input buffer.
+ */
 public class BufferLocator implements DatumLocator<byte[], Integer, byte[], byte[]> {
 
     private final ConcurrentHashMap<ByteBuffer, Integer> matchers = new ConcurrentHashMap<>();
     @Getter
     private int longestWord = 0;
 
+    /***
+     * Add sequence of bytes to search for.
+     * @param matcher The searched bytes sequence.
+     */
     public void addMatcher(byte[] matcher) {
         if (matcher.length == 0) {
             throw new RuntimeException("match length must not be zero");
@@ -26,6 +33,12 @@ public class BufferLocator implements DatumLocator<byte[], Integer, byte[], byte
         }
     }
 
+    /***
+     * Finds the next searched bytes sequence.
+     * @param in The buffer to search in.
+     * @param fromLocation The location in the buffer to start the search from.
+     * @return A result with the location and found bytes sequence or empty() if not found.
+     */
     @Override
     public Optional<Result<Integer, byte[], byte[]>> findNext(byte[] in, Integer fromLocation) {
 
@@ -42,18 +55,36 @@ public class BufferLocator implements DatumLocator<byte[], Integer, byte[], byte
         return Optional.empty();
     }
 
+    /***
+     * Start a search session. More friendly to search in streams than the findNext() method.
+     * @param fromLocation Should be 0 if the search starts from the beginning of the input or
+     *                     the offset of the search start if the search is starting from another location.
+     * @return The search session.
+     */
     public LocatorSession startLocatorSession(int fromLocation) {
         return new LocatorSession(fromLocation);
     }
 
+    /***
+     * A search session.
+     */
     public class LocatorSession {
         private final List<ByteArrayOutputStream> words = new ArrayList<>();
         private int location;
 
-        public LocatorSession(int startLocation) {
-            location = startLocation;
+        /***
+         * @param fromLocation Should be 0 if the search starts from the beginning of the input or
+         *                     the offset of the search start if the search is starting from another location.
+         */
+        public LocatorSession(int fromLocation) {
+            location = fromLocation;
         }
 
+        /***
+         * Add another byte to scanned input.
+         * @param b A new byte from the input.
+         * @return A result of a found byte sequence or empty() if not found yet.
+         */
         public Optional<Result<Integer, byte[], byte[]>> addByte(byte b) {
             ++location;
             addByteToWords(words, b);

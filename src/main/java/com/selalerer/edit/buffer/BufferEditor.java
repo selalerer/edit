@@ -8,21 +8,38 @@ import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 
+/***
+ * A byte array editor.
+ */
 @Slf4j
 public class BufferEditor implements Editor<byte[]> {
 
     private final BufferLocator locator = new BufferLocator();
     private final BufferSubstitutionSupplier substitutionSupplier = new BufferSubstitutionSupplier();
 
+    /***
+     * Add a desired replacement when editing the input buffer.
+     * @param matcher The byte sequence to search and replace.
+     * @param replacement The replacement to use.
+     */
     public void addReplacement(byte[] matcher, byte[] replacement) {
         locator.addMatcher(matcher);
         substitutionSupplier.addSubstitution(matcher, replacement);
     }
 
+    /***
+     * @return The length of the longest searched byte sequence.
+     */
     public int getLongestWord() {
         return locator.getLongestWord();
     }
 
+    /***
+     * Edit a buffer, replacing the searched bytes sequences with their replacements as defined by calls to
+     * addReplacement() method.
+     * @param in The input buffer.
+     * @return The edited buffer.
+     */
     @Override
     public byte[] edit(byte[] in) {
         if (in == null) {
@@ -41,24 +58,38 @@ public class BufferEditor implements Editor<byte[]> {
         return output.toByteArray();
     }
 
+    /***
+     * Starting an editing session. More friendly when reading input from a stream.
+     * @param o The stream to write the edited result into.
+     * @return The new session.
+     */
     public EditorSession createEditorSession(OutputStream o) {
         return new EditorSession(o);
     }
 
+    /***
+     * An editing session.
+     */
     public class EditorSession implements AutoCloseable {
 
         private final OutputStream o;
-        private int location = 0;
         private final byte[] buffer;
         private int validBytes = 0;
         private final BufferLocator.LocatorSession locatorSession;
 
+        /***
+         * @param o The stream to write the edited data into.
+         */
         public EditorSession(OutputStream o) {
             this.o = o;
             buffer = new byte[getLongestWord()];
             locatorSession = locator.startLocatorSession(0);
         }
 
+        /***
+         * Add another input byte.
+         * @param b The next input byte.
+         */
         @SneakyThrows
         public void addByte(byte b) {
 
@@ -68,7 +99,6 @@ public class BufferEditor implements Editor<byte[]> {
                 return;
             }
 
-            ++location;
             if (validBytes >= buffer.length) {
                 // Can write out the oldest byte.
                 o.write(buffer[0]);
@@ -103,6 +133,10 @@ public class BufferEditor implements Editor<byte[]> {
             o.write(replacement);
         }
 
+        /***
+         * Close the session, writing to the output any leftover bytes from the input that weren't
+         * substituted.
+         */
         @SneakyThrows
         public void close() {
             if  (validBytes > 0) {

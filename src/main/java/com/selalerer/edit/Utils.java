@@ -4,6 +4,11 @@ import java.util.Arrays;
 
 public class Utils {
 
+    /***
+     * Strigify an object for logging.
+     * @param o The object to stringify.
+     * @return A string representation of the object.
+     */
     public static String toString(Object o) {
         if (o == null) {
             return "null";
