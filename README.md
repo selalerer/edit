@@ -1,6 +1,15 @@
 # edit
 A java library for editing buffers.
 
+Maven dependency:
+```xml
+        <dependency>
+            <groupId>com.selalerer</groupId>
+            <artifactId>edit</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+```
+
 Edit strings:
 ```java
         var badStory = """
