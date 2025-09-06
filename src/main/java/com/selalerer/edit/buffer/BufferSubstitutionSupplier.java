@@ -23,6 +23,13 @@ public class BufferSubstitutionSupplier implements SubstitutionSupplier<byte[], 
     }
 
     /***
+     * Remove a substitution previously added.
+     */
+    public void removeSubstitution(byte[] matcher) {
+        substitutions.remove(ByteBuffer.wrap(matcher));
+    }
+
+    /***
      * @param matcher The bytes sequence that was used to find the substituted bytes.
      * @param current The bytes that will be substituted.
      * @return The substitution bytes sequence.

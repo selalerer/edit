@@ -21,6 +21,13 @@ public class StringEditor implements Editor<String> {
     }
 
     /***
+     * Remove a previously requested added substitution.
+     */
+    public void removeReplacement(String toReplace) {
+        bufferEditor.removeReplacement(toReplace.getBytes());
+    }
+
+    /***
      * Edit a given string as configured by calls to the addReplacement() method.
      * @param in The string to edit.
      * @return The edited string.

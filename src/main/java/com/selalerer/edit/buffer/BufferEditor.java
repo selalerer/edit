@@ -1,21 +1,25 @@
 package com.selalerer.edit.buffer;
 
 import com.selalerer.edit.Editor;
+import com.selalerer.edit.LongestWordChangeListener;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /***
  * A byte array editor.
  */
 @Slf4j
-public class BufferEditor implements Editor<byte[]> {
+public class BufferEditor implements Editor<byte[]>, LongestWordChangeListener {
 
-    private final BufferLocator locator = new BufferLocator();
+    private final BufferLocator locator = new BufferLocator(this);
     private final BufferSubstitutionSupplier substitutionSupplier = new BufferSubstitutionSupplier();
+    private final List<EditorSession> activeSessions = new ArrayList<>();
 
     /***
      * Add a desired replacement when editing the input buffer.
@@ -23,8 +27,16 @@ public class BufferEditor implements Editor<byte[]> {
      * @param replacement The replacement to use.
      */
     public void addReplacement(byte[] matcher, byte[] replacement) {
-        locator.addMatcher(matcher);
         substitutionSupplier.addSubstitution(matcher, replacement);
+        locator.addMatcher(matcher);
+    }
+
+    /***
+     * Remove previously added replacement.
+     */
+    public void removeReplacement(byte[] matcher) {
+        locator.removeMatcher(matcher);
+        substitutionSupplier.removeSubstitution(matcher);
     }
 
     /***
@@ -64,16 +76,31 @@ public class BufferEditor implements Editor<byte[]> {
      * @return The new session.
      */
     public EditorSession createEditorSession(OutputStream o) {
-        return new EditorSession(o);
+        var session = new EditorSession(o);
+        synchronized (activeSessions) {
+            activeSessions.add(session);
+        }
+        return session;
+    }
+
+    @Override
+    public void longestWordUpdated(int previousLongestWord, int newLongestWord) {
+        List<EditorSession> activeSessionsCopy;
+        synchronized (activeSessions) {
+            activeSessionsCopy = activeSessions.stream().toList();
+        }
+        for (var session : activeSessionsCopy) {
+            session.longestWordUpdated(previousLongestWord, newLongestWord);
+        }
     }
 
     /***
      * An editing session.
      */
-    public class EditorSession implements AutoCloseable {
+    public class EditorSession implements AutoCloseable, LongestWordChangeListener {
 
         private final OutputStream o;
-        private final byte[] buffer;
+        private byte[] buffer;
         private int validBytes = 0;
         private final BufferLocator.LocatorSession locatorSession;
 
@@ -91,7 +118,7 @@ public class BufferEditor implements Editor<byte[]> {
          * @param b The next input byte.
          */
         @SneakyThrows
-        public void addByte(byte b) {
+        public synchronized void addByte(byte b) {
 
             // No replacements
             if (buffer.length == 0) {
@@ -138,12 +165,27 @@ public class BufferEditor implements Editor<byte[]> {
          * substituted.
          */
         @SneakyThrows
-        public void close() {
+        public synchronized void close() {
+            synchronized (activeSessions) {
+                activeSessions.remove(this);
+            }
             if  (validBytes > 0) {
                 o.write(buffer, 0, validBytes);
                 validBytes = 0;
             }
             o.close();
+        }
+
+        @Override
+        public synchronized void longestWordUpdated(int previousLongestWord, int newLongestWord) {
+            if (newLongestWord != buffer.length) {
+                var newBuffer = new byte[newLongestWord];
+                System.arraycopy(buffer, 0, newBuffer, 0, Math.min(buffer.length, newBuffer.length));
+                if (validBytes > newBuffer.length) {
+                    validBytes = newBuffer.length;
+                }
+                buffer = newBuffer;
+            }
         }
     }
 }

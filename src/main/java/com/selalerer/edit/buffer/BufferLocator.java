@@ -1,36 +1,62 @@
 package com.selalerer.edit.buffer;
 
 import com.selalerer.edit.DatumLocator;
-import lombok.Getter;
+import com.selalerer.edit.LongestWordChangeListener;
+import lombok.RequiredArgsConstructor;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 
 /***
  * Locates sequences of bytes in an input buffer.
  */
+@RequiredArgsConstructor
 public class BufferLocator implements DatumLocator<byte[], Integer, byte[], byte[]> {
 
-    private final ConcurrentHashMap<ByteBuffer, Integer> matchers = new ConcurrentHashMap<>();
-    @Getter
-    private int longestWord = 0;
+    private final HashSet<ByteBuffer> matchers = new HashSet<>();
+    private final LongestWordChangeListener longestWordChangeListener;
 
     /***
      * Add sequence of bytes to search for.
      * @param matcher The searched bytes sequence.
      */
-    public void addMatcher(byte[] matcher) {
+    public synchronized void addMatcher(byte[] matcher) {
         if (matcher.length == 0) {
             throw new RuntimeException("match length must not be zero");
         }
-        matchers.put(ByteBuffer.wrap(matcher), 0);
-        if (matcher.length > longestWord) {
-            longestWord = matcher.length;
+        matchersChange(() -> matchers.add(ByteBuffer.wrap(matcher)));
+    }
+
+    /**
+     * Remove sequence of bytes to search for.
+     * @param matcher The no longer searched bytes sequence.
+     */
+    public void removeMatcher(byte[] matcher) {
+        matchersChange(() -> matchers.remove(ByteBuffer.wrap(matcher)));
+    }
+
+    private void matchersChange(Runnable change) {
+        int longestWordBefore, longestWordAfter;
+
+        synchronized (this) {
+            longestWordBefore = getLongestWord();
+            change.run();
+            longestWordAfter = getLongestWord();
         }
+
+        if (longestWordBefore != longestWordAfter && longestWordChangeListener != null) {
+            longestWordChangeListener.longestWordUpdated(longestWordBefore, longestWordAfter);
+        }
+    }
+
+    /**
+     * @return The longest word that is currently searched for by this locator.
+     */
+    public synchronized int getLongestWord() {
+        return matchers.stream()
+                .mapToInt(k -> k.array().length)
+                .reduce(0, Math::max);
     }
 
     /***
@@ -102,13 +128,14 @@ public class BufferLocator implements DatumLocator<byte[], Integer, byte[], byte
     }
 
     private void removeWordsThatAreTooLong(List<ByteArrayOutputStream> words) {
+        var longestWord = getLongestWord();
         words.removeIf(w -> w.size() > longestWord);
     }
 
     private Optional<byte[]> getMatchingWord(List<ByteArrayOutputStream> words) {
         return words.stream()
                 .map(ByteArrayOutputStream::toByteArray)
-                .filter(word -> matchers.containsKey(ByteBuffer.wrap(word)))
+                .filter(word -> matchers.contains(ByteBuffer.wrap(word)))
                 .findFirst();
     }
 
